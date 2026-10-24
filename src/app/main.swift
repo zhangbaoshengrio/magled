@@ -7,7 +7,7 @@ import ServiceManagement
 // Reads are done directly (no root needed).
 
 let kNightStartHour = 23
-let kNightEndHour = 7
+let kNightEndHour = 8
 let kNightPrefKey = "NightScheduleEnabled"
 let kLastModeKey = "LastMode"
 
@@ -35,6 +35,7 @@ final class MagLEDController: NSObject, NSMenuDelegate {
     var nightEnabled = false {
         didSet { UserDefaults.standard.set(nightEnabled, forKey: kNightPrefKey) }
     }
+    var nightSynced = false    // first tick after launch/enable always writes, so a stale manual 'off' does not leak into the day
     var nightApplied = false   // whether "night off" is currently in effect by the schedule
     var timer: Timer?
     var refreshWorkItem: DispatchWorkItem?
@@ -80,7 +81,7 @@ final class MagLEDController: NSObject, NSMenuDelegate {
         menu.addItem(itemAmber)
 
         menu.addItem(.separator())
-        itemNight = NSMenuItem(title: "夜间自动关灯（23:00–07:00）", action: #selector(toggleNight), keyEquivalent: "")
+        itemNight = NSMenuItem(title: "夜间自动关灯（23:00–08:00）", action: #selector(toggleNight), keyEquivalent: "")
         itemNight.target = self
         menu.addItem(itemNight)
 
@@ -256,7 +257,7 @@ final class MagLEDController: NSObject, NSMenuDelegate {
     @objc func toggleNight() {
         nightEnabled.toggle()
         itemNight.state = nightEnabled ? .on : .off
-        if nightEnabled { tick() } else {
+        if nightEnabled { nightSynced = false; tick() } else {
             // restore to system when disabling
             if helperUp { _ = writeCurrent(0); current = 0 }
             nightApplied = false
@@ -376,10 +377,11 @@ final class MagLEDController: NSObject, NSMenuDelegate {
     func tick() {
         guard nightEnabled, supported, helperUp else { return }
         let shouldOff = inNight()
-        guard shouldOff != nightApplied else { return }
+        guard shouldOff != nightApplied || !nightSynced else { return }
         nightApplied = shouldOff
         let v: UInt8 = shouldOff ? 1 : 0
         if writeCurrent(v) {
+            nightSynced = true
             current = v
             rebuildMenu()
             flash(title: shouldOff ? "夜间模式：灯已关闭" : "夜间结束：恢复系统")
