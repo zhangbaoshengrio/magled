@@ -221,10 +221,9 @@ if let reply = LedSock.send("get") {
 }
 
 func runScript(_ name: String, confirm: String) {
-    let here = FileManager.default.currentDirectoryPath
     let exeDir = ((CommandLine.arguments.first ?? "") as NSString).deletingLastPathComponent as String
     var scriptPath = ""
-    for base in [here, "/Applications/MagLED.app/Contents/Resources", exeDir] {
+    for base in ["/Applications/MagLED.app/Contents/Resources", exeDir] {
         let p = (base as NSString).appendingPathComponent(name)
         if FileManager.default.fileExists(atPath: p) { scriptPath = p; break }
     }
@@ -232,9 +231,9 @@ func runScript(_ name: String, confirm: String) {
         print("找不到 \(name)（脚本应与 ledctl 放在同一目录，或在解压包根目录运行）")
         exit(1)
     }
-    let esc = scriptPath.replacingOccurrences(of: "\"", with: "\"\"")
+    let esc = scriptPath.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
     let prompt = confirm.replacingOccurrences(of: "\"", with: "\"\"")
-    let appleScript = "do shell script \"sh \(esc)\" with prompt \"\(prompt)\" with administrator privileges"
+    let appleScript = "do shell script \"sh \" & quoted form of \"\(esc)\" with prompt \"\(prompt)\" with administrator privileges"
     let task = Process()
     task.launchPath = "/usr/bin/osascript"
     task.arguments = ["-e", appleScript]

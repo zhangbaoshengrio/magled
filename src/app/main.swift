@@ -288,8 +288,8 @@ final class MagLEDController: NSObject, NSMenuDelegate {
             flash(title: "找不到 install.sh（应用包不完整？）")
             return
         }
-        let esc = script.replacingOccurrences(of: "\"", with: "\"\"")
-        let appleScript = "do shell script \"sh \(esc)\" with prompt \"安装 magled 后台守护\" with administrator privileges"
+        let esc = script.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        let appleScript = "do shell script \"sh \" & quoted form of \"\(esc)\" with prompt \"安装 magled 后台守护\" with administrator privileges"
         let task = Process()
         task.launchPath = "/usr/bin/osascript"
         task.arguments = ["-e", appleScript]

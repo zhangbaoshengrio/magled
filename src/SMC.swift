@@ -142,9 +142,11 @@ public enum SMC {
         }
 
         public func readByte(_ key: String) throws -> UInt8 {
+            let info = try keyInfo(key)
             var request = SMCParamStruct()
             request.key = try fourCC(key)
             request.data8 = kSMCReadKey
+            request.keyInfo.dataSize = info.size
             let reply = try call(request)
             return reply.bytes.0
         }

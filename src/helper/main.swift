@@ -90,8 +90,8 @@ final class Helper {
             throw NSError(domain: "magled", code: 2, userInfo: [NSLocalizedDescriptionKey: "bind failed: errno \(String(errno))"])
         }
         chmod(sockPath, 0o660)
-        let staff = gid_t(20)
-        chown(sockPath, 0, staff)
+        let admin = gid_t(80)   // macOS "admin" group — administrators only (not "staff", which every user is in)
+        chown(sockPath, 0, admin)
         guard listen(fd, 8) == 0 else { throw NSError(domain: "magled", code: 3, userInfo: [NSLocalizedDescriptionKey: "listen failed: errno \(String(errno))"]) }
         log("helper: listening on \(sockPath)")
     }
@@ -102,6 +102,9 @@ final class Helper {
         let cfd = accept(fd, withUnsafeMutablePointer(to: &peerAddr) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { $0 } }, &len)
         guard cfd >= 0 else { return }
         defer { close(cfd) }
+        // A client that connects and sends nothing must not freeze the daemon.
+        var rtv = timeval(tv_sec: 2, tv_usec: 0)
+        setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
 
         var buffer = [UInt8](repeating: 0, count: 256)
         var line = [UInt8]()
